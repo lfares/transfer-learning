@@ -35,26 +35,35 @@ class CollectBatchStats(tf.keras.callbacks.Callback):
     self.model.reset_metrics()
 
 PATH = os.getcwd()
-data_dir = pathlib.Path(PATH+'/cats_and_dogs_filtered/train')
+train_dir = pathlib.Path(PATH+'/cats_and_dogs_filtered/train')
+validate_dir = pathlib.Path(PATH+'/cats_and_dogs_filtered/validation')
 
-CLASS_NAMES = np.array([item.name for item in data_dir.glob('*')])
+CLASS_NAMES = np.array([item.name for item in train_dir.glob('*')])
 
 print(CLASS_NAMES)
 
-image_count = len(list(data_dir.glob('*/*.jpg')))
+train_image_count = len(list(train_dir.glob('*/*.jpg')))
+validate_image_count = len(list(validate_dir.glob('*/*.jpg')))
 # The 1./255 is to convert from uint8 to float32 in range [0,1].
 image_generator = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
 
 BATCH_SIZE = 32
-IMG_HEIGHT = 224
-IMG_WIDTH = 224
-STEPS_PER_EPOCH = np.ceil(image_count/BATCH_SIZE)
+IMG_HEIGHT = 160
+IMG_WIDTH = 160
 
-train_data_gen = image_generator.flow_from_directory(directory=str(data_dir),
+train_data_gen = image_generator.flow_from_directory(directory=str(train_dir),
                                                      batch_size=BATCH_SIZE,
                                                      shuffle=True,
                                                      target_size=(IMG_HEIGHT, IMG_WIDTH),
-                                                     classes = list(CLASS_NAMES))
+                                                     classes = list(CLASS_NAMES),
+                                                     class_mode='categorical')
+
+validate_data_gen = image_generator.flow_from_directory(directory=str(validate_dir),
+                                                        batch_size=BATCH_SIZE,
+                                                        shuffle=True,
+                                                        target_size=(IMG_HEIGHT, IMG_WIDTH),
+                                                        classes = list(CLASS_NAMES),
+                                                        class_mode='categorical')
 
 image_batch, label_batch = next(train_data_gen)
 
