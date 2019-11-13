@@ -71,15 +71,13 @@ image_batch, label_batch = next(train_data_gen)
 # show_batch(image_batch, label_batch)
 
 # Download headless model
-model = tf.keras.applications.mobilenet_v2.MobileNetV2(input_shape=(160,160,3), include_top=False, weights='imagenet')
-# feature_extractor_layer.trainable = False
-
-# Attach classification head
-# model = tf.keras.Sequential([
-#   feature_extractor_layer,
-#   #tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=None, padding='valid')
-#   layers.Dense(train_data_gen.num_classes, activation='softmax')
-# ])
+input_tensor = tf.keras.Input(shape=(160,160,3))
+x = tf.keras.applications.mobilenet_v2.MobileNetV2(include_top=False, weights='imagenet')(input_tensor)
+x = layers.GlobalAveragePooling2D()(x)
+x = layers.Dense(1024, activation='relu')(x)
+x = layers.Dense(512, activation='relu')(x)
+predictions = layers.Dense(2, activation='softmax')(x)
+model = tf.keras.Model(inputs=(input_tensor), outputs=[predictions])
 
 model.summary()
 
@@ -95,7 +93,7 @@ earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_acc', patience=30, ver
 batch_stats_callback = CollectBatchStats()
 history = model.fit_generator(train_data_gen,
                               validation_data= validate_data_gen,
-                              epochs=2,
+                              epochs=20,
                               steps_per_epoch=steps_per_epoch,
                               validation_steps=validation_steps,
                               callbacks = [earlystop])
