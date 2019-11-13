@@ -71,46 +71,40 @@ image_batch, label_batch = next(train_data_gen)
 # show_batch(image_batch, label_batch)
 
 # Download headless model
-feature_extractor_url = "https://tfhub.dev/google/tf2-preview/mobilenet_v2/feature_vector/2" #@param {type:"string"}
-feature_extractor_layer = hub.KerasLayer(feature_extractor_url,
-                                         input_shape=(224,224,3))
-feature_batch = feature_extractor_layer(image_batch)
-print(feature_batch.shape)
-feature_extractor_layer.trainable = False
-
+model = tf.keras.applications.mobilenet_v2.MobileNetV2(input_shape=(160,160,3), include_top=False, weights='imagenet')
+# feature_extractor_layer.trainable = False
 
 # Attach classification head
-model = tf.keras.Sequential([
-  feature_extractor_layer,
-  layers.Dense(train_data_gen.num_classes, activation='softmax')
-])
+# model = tf.keras.Sequential([
+#   feature_extractor_layer,
+#   #tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=None, padding='valid')
+#   layers.Dense(train_data_gen.num_classes, activation='softmax')
+# ])
 
 model.summary()
 
 predictions = model(image_batch)
+print(predictions.shape)
 
-predictions.shape
-
-model.compile(
-  optimizer=tf.keras.optimizers.Adam(),
-  loss='categorical_crossentropy',
-  metrics=['acc'])
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 steps_per_epoch = np.ceil(train_data_gen.samples/train_data_gen.batch_size)
+validation_steps = np.ceil(validate_data_gen.samples/validate_data_gen.batch_size)
 
+earlystop = tf.keras.callbacks.EarlyStopping(monitor='val_acc', patience=30, verbose=0, mode='auto')
 batch_stats_callback = CollectBatchStats()
-
-history = model.fit_generator(train_data_gen, epochs=20,
+history = model.fit_generator(train_data_gen,
+                              validation_data= validate_data_gen,
+                              epochs=2,
                               steps_per_epoch=steps_per_epoch,
-                              callbacks = [batch_stats_callback])
-
+                              validation_steps=validation_steps,
+                              callbacks = [earlystop])
 
 save_dir = os.path.join(os.getcwd(), 'saved_models')
-model_name = 'qider_trained_model.h5'
+model_name = 'cats_and_dogs_trained_model.h5'
 # Save model and weights
 if not os.path.isdir(save_dir):
     os.makedirs(save_dir)
 model_path = os.path.join(save_dir, model_name)
 model.save(model_path)
 print('Saved trained model at %s ' % model_path)
-
